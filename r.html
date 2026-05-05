@@ -1,0 +1,239 @@
+```html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Крестики-нолики</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+        }
+        .cell {
+            transition: all 0.3s ease;
+            aspect-ratio: 1 / 1;
+        }
+        .cell:hover:not(.occupied) {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: scale(0.95);
+        }
+        .symbol-enter {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .winning-cell {
+            background-color: rgba(34, 197, 94, 0.4) !important;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-md w-full bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 text-white text-center">
+        <h1 class="text-4xl font-bold mb-6 tracking-tight">Крестики-нолики</h1>
+        
+        <!-- Выбор режима -->
+        <div id="setup" class="mb-6 space-y-4">
+            <p class="text-lg opacity-90">Выберите режим игры:</p>
+            <div class="flex gap-2 justify-center">
+                <button onclick="startGame('pvp')" class="px-6 py-2 bg-white/20 hover:bg-white/30 rounded-full transition-all border border-white/30">С другом</button>
+                <button onclick="startGame('pve')" class="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-full transition-all shadow-lg">Против ИИ</button>
+            </div>
+        </div>
+
+        <!-- Игровое поле -->
+        <div id="game-container" class="hidden">
+            <div class="flex justify-between items-center mb-6 px-2">
+                <div id="player-x" class="text-xl font-semibold border-b-4 border-indigo-400 pb-1">Игрок X</div>
+                <div class="text-2xl font-light opacity-50">VS</div>
+                <div id="player-o" class="text-xl font-semibold border-b-4 border-transparent pb-1">Игрок O</div>
+            </div>
+
+            <div id="board" class="grid grid-cols-3 gap-3 bg-white/5 p-3 rounded-2xl border border-white/10">
+                <!-- Ячейки генерируются JS -->
+            </div>
+
+            <div id="status" class="mt-8 text-xl font-medium min-h-[1.5rem]">Ход Крестиков...</div>
+            
+            <button onclick="resetGame()" class="mt-6 px-8 py-3 bg-white text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition-colors shadow-lg active:scale-95">
+                Начать заново
+            </button>
+            <button onclick="backToMenu()" class="mt-4 block mx-auto text-sm opacity-70 hover:opacity-100 transition-opacity">
+                Вернуться в меню
+            </button>
+        </div>
+    </div>
+
+    <!-- Модальное окно результата -->
+    <div id="modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white text-gray-800 p-8 rounded-3xl shadow-2xl max-w-xs w-full text-center transform scale-90 transition-transform duration-300" id="modal-content">
+            <h2 id="modal-title" class="text-3xl font-bold mb-2">Победа!</h2>
+            <p id="modal-message" class="text-lg text-gray-600 mb-6">Игрок X выиграл этот раунд.</p>
+            <button onclick="closeModal()" class="w-full py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-colors shadow-xl">
+                Играть еще
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let board = Array(9).fill(null);
+        let currentPlayer = 'X';
+        let isGameActive = false;
+        let gameMode = 'pvp'; // 'pvp' или 'pve'
+        
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        const playerXElement = document.getElementById('player-x');
+        const playerOElement = document.getElementById('player-o');
+        const setupElement = document.getElementById('setup');
+        const gameContainer = document.getElementById('game-container');
+        const modal = document.getElementById('modal');
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Горизонтали
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Вертикали
+            [0, 4, 8], [2, 4, 6]             // Диагонали
+        ];
+
+        function createBoard() {
+            boardElement.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell', 'bg-white/10', 'rounded-xl', 'flex', 'items-center', 'justify-center', 'text-4xl', 'font-bold', 'cursor-pointer');
+                cell.dataset.index = i;
+                cell.addEventListener('click', () => handleCellClick(i));
+                boardElement.appendChild(cell);
+            }
+        }
+
+        function startGame(mode) {
+            gameMode = mode;
+            setupElement.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+            resetGame();
+        }
+
+        function backToMenu() {
+            setupElement.classList.remove('hidden');
+            gameContainer.classList.add('hidden');
+        }
+
+        function handleCellClick(index) {
+            if (!isGameActive || board[index] !== null) return;
+            
+            makeMove(index);
+
+            if (isGameActive && gameMode === 'pve' && currentPlayer === 'O') {
+                isGameActive = false; // Блокируем клики пока думает ИИ
+                setTimeout(aiMove, 600);
+            }
+        }
+
+        function makeMove(index) {
+            board[index] = currentPlayer;
+            const cell = boardElement.children[index];
+            cell.innerText = currentPlayer;
+            cell.classList.add('occupied', 'symbol-enter');
+            cell.classList.add(currentPlayer === 'X' ? 'text-indigo-300' : 'text-rose-300');
+
+            if (checkWin()) {
+                endGame(false);
+            } else if (board.every(cell => cell !== null)) {
+                endGame(true);
+            } else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                updateStatus();
+                isGameActive = true;
+            }
+        }
+
+        function aiMove() {
+            if (!isGameActive && board.every(cell => cell !== null)) return;
+            
+            // Простейший ИИ: случайная пустая клетка
+            const emptyCells = board.map((val, idx) => val === null ? idx : null).filter(val => val !== null);
+            if (emptyCells.length > 0) {
+                const randomIndex = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                isGameActive = true;
+                makeMove(randomIndex);
+            }
+        }
+
+        function checkWin() {
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    highlightWinningCells(condition);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function highlightWinningCells(indices) {
+            indices.forEach(idx => {
+                boardElement.children[idx].classList.add('winning-cell');
+            });
+        }
+
+        function updateStatus() {
+            statusElement.innerText = `Ход ${currentPlayer === 'X' ? 'Крестиков' : 'Ноликов'}...`;
+            playerXElement.style.borderColor = currentPlayer === 'X' ? '#818cf8' : 'transparent';
+            playerOElement.style.borderColor = currentPlayer === 'O' ? '#818cf8' : 'transparent';
+        }
+
+        function endGame(draw) {
+            isGameActive = false;
+            const title = document.getElementById('modal-title');
+            const msg = document.getElementById('modal-message');
+
+            if (draw) {
+                statusElement.innerText = 'Ничья!';
+                title.innerText = 'Ничья!';
+                msg.innerText = 'В этот раз победила дружба.';
+            } else {
+                statusElement.innerText = `Победа ${currentPlayer === 'X' ? 'Крестиков' : 'Ноликов'}!`;
+                title.innerText = 'Победа!';
+                msg.innerText = `Игрок ${currentPlayer} выиграл этот раунд.`;
+            }
+            
+            setTimeout(() => {
+                modal.classList.remove('hidden');
+                document.getElementById('modal-content').classList.remove('scale-90');
+                document.getElementById('modal-content').classList.add('scale-100');
+            }, 700);
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            resetGame();
+        }
+
+        function resetGame() {
+            board = Array(9).fill(null);
+            currentPlayer = 'X';
+            isGameActive = true;
+            createBoard();
+            updateStatus();
+        }
+
+        // Инициализация поля при загрузке
+        createBoard();
+    </script>
+</body>
+</html>
+
+```
