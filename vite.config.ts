@@ -7,6 +7,7 @@ import {VitePWA} from 'vite-plugin-pwa';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
+    base: './',
     plugins: [
       react(),
       tailwindcss(),
@@ -14,22 +15,26 @@ export default defineConfig(({mode}) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         manifest: {
-          name: 'TicTacToe PWA',
+          name: 'TicTacToe Ultra',
           short_name: 'TicTacToe',
-          description: 'Stylish Tic-Tac-Toe Game',
-          theme_color: '#000000',
-          background_color: '#ffffff',
+          description: 'A professional-grade Tic-Tac-Toe PWA',
+          theme_color: '#0a0a0a',
+          background_color: '#0a0a0a',
           display: 'standalone',
+          start_url: './',
+          scope: './',
           icons: [
             {
               src: 'pwa-192x192.png',
               sizes: '192x192',
               type: 'image/png',
+              purpose: 'any maskable',
             },
             {
               src: 'pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
+              purpose: 'any maskable',
             },
           ],
         },
