@@ -1,0 +1,6 @@
+{
+  "name": "TicTacToe PWA",
+  "description": "Стильная игра Крестики-нолики с поддержкой PWA для игры офлайн.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
